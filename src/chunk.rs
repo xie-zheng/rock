@@ -1,6 +1,7 @@
 #[repr(u8)]
 pub enum OpCode {
     CONSTANT,
+    CONSTANT_LONG,
     RETURN,
     UNKNOWN,
 }
@@ -9,7 +10,8 @@ impl From<u8> for OpCode {
     fn from(op: u8) -> Self {
         match op {
             0 => Self::CONSTANT,
-            1 => Self::RETURN,
+            1 => Self::CONSTANT_LONG,
+            2 => Self::RETURN,
             _ => Self::UNKNOWN,
         }
     }
@@ -23,6 +25,7 @@ pub struct Chunk {
     /// 这样在确定是第几行时只需二分查找一下
     pub lines: Vec<usize>,
     constants: Vec<Value>,
+    constants_long: Vec<Value>,
 }
 
 impl Chunk {
@@ -31,6 +34,7 @@ impl Chunk {
             code: Vec::new(),
             lines: Vec::new(),
             constants: Vec::new(),
+            constants_long: Vec::new(),
         }
     }
 
@@ -57,11 +61,29 @@ impl Chunk {
         self.line_add(line, 1);
     }
 
-    pub fn write_const(&mut self, op: OpCode, data: Value, line: usize) {
-        self.constants.push(data);
-        self.code
-            .extend_from_slice(&[op as u8, self.constants.len() as u8 - 1]);
-        self.line_add(line, 2);
+    pub fn write_const(&mut self, data: Value, line: usize) {
+        // CONSTANT
+        if self.constants.len() < 256 {
+            self.constants.push(data);
+            self.code
+                .extend_from_slice(&[OpCode::CONSTANT as u8, (self.constants.len() - 1) as u8]);
+            self.line_add(line, 2);
+            return;
+        }
+
+        // CONSTANT_LONG
+        if self.constants_long.len() >= 2_usize.pow(24) {
+            // error
+            return;
+        }
+        self.constants_long.push(data);
+        let index = self.constants_long.len() - 1;
+        self.code.extend_from_slice(&[
+            OpCode::CONSTANT_LONG as u8,
+            (index >> 16) as u8,
+            (index >> 8) as u8,
+            index as u8,
+        ])
     }
 
     pub fn disassemble(&self, name: &str) {
@@ -81,6 +103,7 @@ impl Chunk {
         match instruction {
             OpCode::RETURN => Self::simple_instruction("OP_RETURN", offset),
             OpCode::CONSTANT => self.const_instruction("OP_CONSTANT", offset),
+            OpCode::CONSTANT_LONG => self.const_long_instruction("OP_CONSTANT_LONG", offset),
             _ => {
                 println!("Unknown opcode {} \n", instruction as u8);
                 offset + 1
@@ -96,5 +119,14 @@ impl Chunk {
     fn const_instruction(&self, op: &str, offset: usize) -> usize {
         println!("{} {}", op, self.constants[self.code[offset + 1] as usize]);
         offset + 2
+    }
+
+    fn const_long_instruction(&self, op: &str, offset: usize) -> usize {
+        let mut index = 0;
+        index += (self.code[offset + 1] as usize) << 16;
+        index += (self.code[offset + 2] as usize) << 8;
+        index += self.code[offset + 3] as usize;
+        println!("{} {}", op, self.constants_long[index]);
+        offset + 4
     }
 }
