@@ -2,30 +2,41 @@
 pub enum OpCode {
     CONSTANT,
     CONSTANT_LONG,
+    ADD,
+    SUBTRACT,
+    MULTIPLY,
+    DIVIDE,
+    NEGATE,
     RETURN,
     UNKNOWN,
 }
 
 impl From<u8> for OpCode {
     fn from(op: u8) -> Self {
+        use OpCode::*;
         match op {
-            0 => Self::CONSTANT,
-            1 => Self::CONSTANT_LONG,
-            2 => Self::RETURN,
-            _ => Self::UNKNOWN,
+            0 => CONSTANT,
+            1 => CONSTANT_LONG,
+            2 => ADD,
+            3 => SUBTRACT,
+            4 => MULTIPLY,
+            5 => DIVIDE,
+            6 => NEGATE,
+            7 => RETURN,
+            _ => UNKNOWN,
         }
     }
 }
 
-type Value = f64;
+pub type Value = f64;
 
 pub struct Chunk {
-    code: Vec<u8>,
+    pub code: Vec<u8>,
     /// lines的编码，lines[i]=截止到第i行的所有指令数量
     /// 这样在确定是第几行时只需二分查找一下
     pub lines: Vec<usize>,
-    constants: Vec<Value>,
-    constants_long: Vec<Value>,
+    pub constants: Vec<Value>,
+    pub constants_long: Vec<Value>,
 }
 
 impl Chunk {
