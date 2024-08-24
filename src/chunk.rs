@@ -104,11 +104,12 @@ impl Chunk {
         while offset < self.code.len() {
             offset = self.disassemble_instruction(offset);
         }
+        println!("------------");
     }
 
     fn disassemble_instruction(&self, offset: usize) -> usize {
-        print!("{:0>4} ", offset);
-        print!("line:{:0>4} ", self.get_line(offset));
+        print!("{:0>4} | ", offset);
+        print!("line:{:0>4} |", self.get_line(offset));
 
         let instruction: OpCode = self.code[offset].into();
         match instruction {
