@@ -27,6 +27,11 @@ impl VM {
         self.chunk.disassemble("test chunk");
     }
 
+    pub fn interpret(self, source: String) -> Result<(), InterpretErr> {
+        // self.compile(source);
+        Ok(())
+    }
+
     pub fn run(&mut self) -> Result<(), InterpretErr> {
         while self.ip < self.chunk.code.len() {
             match self.chunk.code[self.ip].into() {

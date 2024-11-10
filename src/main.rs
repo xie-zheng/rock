@@ -1,10 +1,11 @@
 use std::io::{self, Read};
+use std::process::exit;
 
-use clap::{Args, Parser, Subcommand, ValueEnum};
+use clap::Parser;
 
 use rock::{
     chunk::{Chunk, OpCode::*},
-    vm::VM,
+    vm::{InterpretErr, VM},
 };
 
 #[derive(Parser)]
@@ -32,8 +33,12 @@ fn main() {
     chunk.write(MULTIPLY, 0);
     chunk.write(RETURN, 1);
 
-    chunk.disassemble("test chunk");
-    println!("{:?}", chunk.lines);
+    #[cfg(debug_assertions)]
+    {
+        chunk.disassemble("test chunk");
+        println!("{:?}", chunk.lines);
+    }
+
     let mut vm = VM::new(chunk);
     let result = vm.run();
     if result.is_ok() {
@@ -43,19 +48,36 @@ fn main() {
     }
 }
 
-fn run_file(file_name: String) {}
+fn run_file(file_name: String) {
+    let source = std::fs::read_to_string(file_name);
+    if source.is_err() {
+        exit(74);
+    }
+    let source_str = source.unwrap();
+    let result = interpret(source_str);
+    match result {
+        Ok(()) => return,
+        Err(InterpretErr::CompileErr) => exit(65),
+        Err(InterpretErr::RuntimeErr) => exit(70),
+    }
+}
 
 fn repl() {
     loop {
         print!("> ");
 
         let mut line = String::new();
-        io::stdin().read_to_string(&mut line).unwrap();
+        let result = io::stdin().read_to_string(&mut line);
+        if let Err(err) = result {
+            println!("interpret met err {}", err);
+            return;
+        }
 
         println!();
 
-        interpret(line);
+        match interpret(line) {
+            Ok(()) => continue,
+            Err(_) => break,
+        }
     }
 }
-
-fn interpret(line: String) {}
